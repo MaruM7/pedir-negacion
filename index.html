@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>¿Pedimos algo?</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Evita que salgan barras de scroll si el botón llega al borde */
+            margin: 0;
+            padding: 0;
+            touch-action: none; /* Evita zooms raros al tocar repetidamente en móvil */
+        }
+        
+        .floating-emoji {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+        }
+
+        #btnNo {
+            /* Usamos transform para moverlo suavemente sin romper la estructura HTML */
+            transition: transform 0.2s ease-out;
+            /* Posición relativa al contenedor para que el translate funcione perfecto */
+            position: relative;
+            z-index: 50;
+        }
+        
+        #btnYes {
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center">
+
+    <div class="bg-white/95 backdrop-blur-md p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-lg w-[90%] border border-white/50 relative">
+        <div class="text-7xl mb-4 floating-emoji">🛵🍔</div>
+        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-800 mb-2 leading-tight">
+            ¿Pedimos Just Eat hoy?
+        </h1>
+        <p class="text-gray-500 mb-8">No te lo pienses mucho...</p>
+        
+        <div class="flex flex-row items-center justify-center gap-6 relative h-[60px]">
+            <!-- Botón Sí -->
+            <button id="btnYes" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-110 active:scale-95 text-xl">
+                ¡Sí, pedimos! 😋
+            </button>
+            
+            <!-- Botón No -->
+            <button id="btnNo" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg text-xl">
+                No 😒
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const btnNo = document.getElementById('btnNo');
+        const btnYes = document.getElementById('btnYes');
+        
+        // Acumuladores de la traslación actual
+        let currentTranslateX = 0;
+        let currentTranslateY = 0;
+        const ESCAPE_DISTANCE = 80; // Píxeles que huirá en cada intento
+
+        function huidBoton(e) {
+            e.preventDefault(); // Evita clics fantasmas
+
+            // Obtenemos las coordenadas del ratón o del dedo
+            let pointerX = e.clientX;
+            let pointerY = e.clientY;
+
+            // Si es un evento táctil, sacamos las coordenadas del primer dedo
+            if (e.touches && e.touches.length > 0) {
+                pointerX = e.touches[0].clientX;
+                pointerY = e.touches[0].clientY;
+            }
+
+            // Obtenemos la caja delimitadora del botón en la pantalla
+            const rect = btnNo.getBoundingClientRect();
+            
+            // Calculamos el centro del botón
+            const btnCenterX = rect.left + (rect.width / 2);
+            const btnCenterY = rect.top + (rect.height / 2);
+
+            // Vector desde el puntero hacia el centro del botón
+            let deltaX = btnCenterX - pointerX;
+            let deltaY = btnCenterY - pointerY;
+
+            // Si el puntero cae exactamente en el centro (o es por teclado), forzamos una dirección
+            if (deltaX === 0 && deltaY === 0) {
+                deltaX = Math.random() > 0.5 ? 1 : -1;
+                deltaY = Math.random() > 0.5 ? 1 : -1;
+            }
+
+            // Normalizamos el vector (calculamos la dirección pura)
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            const dirX = deltaX / distance;
+            const dirY = deltaY / distance;
+
+            // Calculamos cuánto se va a mover en esta iteración
+            let moveX = dirX * ESCAPE_DISTANCE;
+            let moveY = dirY * ESCAPE_DISTANCE;
+
+            const paddingBordes = 20;
+            
+            // Si huir a la derecha lo saca de la pantalla, invertimos la huida hacia la izquierda
+            if (rect.right + moveX > window.innerWidth - paddingBordes) {
+                moveX = -ESCAPE_DISTANCE;
+            }
+            // Si huir a la izquierda lo saca de la pantalla, invertimos hacia la derecha
+            if (rect.left + moveX < paddingBordes) {
+                moveX = ESCAPE_DISTANCE;
+            }
+            // Si huir hacia abajo lo saca de la pantalla, invertimos hacia arriba
+            if (rect.bottom + moveY > window.innerHeight - paddingBordes) {
+                moveY = -ESCAPE_DISTANCE;
+            }
+            // Si huir hacia arriba lo saca de la pantalla, invertimos hacia abajo
+            if (rect.top + moveY < paddingBordes) {
+                moveY = ESCAPE_DISTANCE;
+            }
+
+            // Sumamos el movimiento al total acumulado
+            currentTranslateX += moveX;
+            currentTranslateY += moveY;
+
+            // Aplicamos la transformación. El CSS transition hará que sea fluido.
+            btnNo.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px)`;
+        }
+
+        // En PC: en cuanto el ratón entra en la zona del botón
+        btnNo.addEventListener('mouseenter', huidBoton);
+        
+        // En Móvil: en cuanto el dedo toca la zona del botón
+        btnNo.addEventListener('touchstart', huidBoton, { passive: false });
+
+        // Evento de clic en caso de que logren "cazarlo" usando la tecla Tab + Enter
+        btnNo.addEventListener('click', (e) => {
+            e.preventDefault();
+            huidBoton(e);
+        });
+
+        // El botón "Sí" simplemente nos manda a Just Eat
+        btnYes.addEventListener('click', () => {
+            window.location.href = 'https://www.just-eat.es/?campaignid=711057503&msclkid=f0376ed19247171d4039041701020e4f&utm_source=bing&utm_medium=cpc&utm_campaign=CM_S_B_ESP_%5BBRAND%5D_%5BENGM%5D_Just%20Eat_National&utm_term=just%20eat&utm_content=S_ESP_Just%20Eat';
+        });
+    </script>
+</body>
+</html>
